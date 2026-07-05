@@ -1,11 +1,15 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import {
+  Bell,
   Clock3,
+  Eye,
   Lock,
   MapPin,
   MessageCircle,
+  MoveRight,
+  Radio,
   ShieldCheck,
   Sparkles,
   Users,
@@ -23,10 +27,10 @@ type Moment = {
   time: string;
   action: string;
   countLabel: string;
-  friends?: string;
+  friends: string;
   comments: number;
   tone: "red" | "orange" | "slate";
-  visual: "mill" | "street" | "park" | "fire" | "football";
+  photo: string;
 };
 
 const moments: Moment[] = [
@@ -43,7 +47,7 @@ const moments: Moment[] = [
     friends: "4 friends",
     comments: 3,
     tone: "red",
-    visual: "mill",
+    photo: "mill",
   },
   {
     id: 2,
@@ -58,7 +62,7 @@ const moments: Moment[] = [
     friends: "2 friends likely",
     comments: 1,
     tone: "orange",
-    visual: "street",
+    photo: "street",
   },
   {
     id: 3,
@@ -70,9 +74,10 @@ const moments: Moment[] = [
     time: "Low activity",
     action: "Start something",
     countLabel: "2 familiar nearby",
+    friends: "",
     comments: 0,
     tone: "slate",
-    visual: "park",
+    photo: "park",
   },
   {
     id: 4,
@@ -84,9 +89,10 @@ const moments: Moment[] = [
     time: "6m left",
     action: "Catch it",
     countLabel: "9 left",
+    friends: "",
     comments: 2,
     tone: "red",
-    visual: "fire",
+    photo: "fire",
   },
   {
     id: 5,
@@ -98,9 +104,10 @@ const moments: Moment[] = [
     time: "45m left",
     action: "Tap in",
     countLabel: "6 tapped in",
+    friends: "",
     comments: 1,
     tone: "red",
-    visual: "football",
+    photo: "football",
   },
 ];
 
@@ -112,140 +119,139 @@ const filters = [
   { label: "Ending", count: 3 },
 ];
 
-const avatarSeeds = ["jess", "cam", "maya"];
+const avatars = [
+  "https://api.dicebear.com/8.x/notionists/svg?seed=jess",
+  "https://api.dicebear.com/8.x/notionists/svg?seed=cam",
+  "https://api.dicebear.com/8.x/notionists/svg?seed=maya",
+];
 
-function cn(...classes: Array<string | false | null | undefined>) {
+function cx(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-function Visual({ type }: { type: Moment["visual"] }) {
-  const styles = {
-    mill: "bg-[radial-gradient(circle_at_22%_28%,rgba(255,176,80,.55),transparent_18%),radial-gradient(circle_at_70%_34%,rgba(210,38,32,.34),transparent_18%),linear-gradient(135deg,#3a2117,#17110d_45%,#080808)]",
-    street:
-      "bg-[linear-gradient(110deg,transparent_0_30%,rgba(255,255,255,.13)_31%,transparent_33%_58%,rgba(255,255,255,.08)_59%,transparent_62%),radial-gradient(circle_at_57%_23%,rgba(255,199,118,.38),transparent_18%),linear-gradient(135deg,#1c1b19,#111113_48%,#060606)]",
-    park: "bg-[radial-gradient(circle_at_72%_31%,rgba(234,220,168,.46),transparent_17%),linear-gradient(145deg,#233420,#111711_52%,#070707)]",
-    fire: "bg-[radial-gradient(circle_at_48%_55%,rgba(255,178,57,.85),transparent_9%),radial-gradient(circle_at_47%_63%,rgba(242,28,34,.85),transparent_16%),linear-gradient(145deg,#39100c,#120807_52%,#050505)]",
-    football:
-      "bg-[radial-gradient(circle_at_36%_45%,rgba(235,239,211,.24),transparent_8%),radial-gradient(circle_at_64%_52%,rgba(235,239,211,.18),transparent_7%),linear-gradient(145deg,#172914,#0d130c_55%,#050505)]",
-  };
+function PhotoBlock({ type }: { type: string }) {
+  const photoClass =
+    type === "mill"
+      ? "from-[#3a1d10] via-[#17110d] to-[#070707] before:bg-[radial-gradient(circle_at_30%_22%,rgba(255,177,89,.45),transparent_22%),radial-gradient(circle_at_78%_30%,rgba(255,80,58,.22),transparent_24%),linear-gradient(145deg,rgba(255,255,255,.12),transparent_40%)]"
+      : type === "street"
+      ? "from-[#1d1b18] via-[#101012] to-[#050505] before:bg-[linear-gradient(110deg,transparent_0_28%,rgba(255,255,255,.14)_29%,transparent_31%_52%,rgba(255,255,255,.09)_53%,transparent_56%),radial-gradient(circle_at_55%_25%,rgba(255,201,125,.28),transparent_20%)]"
+      : type === "park"
+      ? "from-[#23311f] via-[#111714] to-[#050505] before:bg-[radial-gradient(circle_at_72%_28%,rgba(238,215,166,.38),transparent_22%),linear-gradient(18deg,rgba(93,122,72,.38),transparent_48%)]"
+      : type === "fire"
+      ? "from-[#42120b] via-[#120807] to-[#030303] before:bg-[radial-gradient(circle_at_46%_60%,rgba(255,38,20,.72),transparent_19%),radial-gradient(circle_at_50%_46%,rgba(255,176,67,.8),transparent_13%)]"
+      : "from-[#172615] via-[#0d120c] to-[#040404] before:bg-[linear-gradient(8deg,rgba(115,167,72,.28),transparent_42%),radial-gradient(circle_at_35%_35%,rgba(255,255,255,.16),transparent_8%),radial-gradient(circle_at_65%_52%,rgba(255,255,255,.12),transparent_7%)]";
 
   return (
     <div
-      className={cn(
-        "relative h-[82px] w-[154px] shrink-0 overflow-hidden rounded-[9px] border border-white/[0.07]",
-        styles[type]
+      className={cx(
+        "relative h-[118px] w-[188px] shrink-0 overflow-hidden rounded-[11px] bg-gradient-to-br shadow-[inset_0_0_0_1px_rgba(255,255,255,.06)]",
+        "before:absolute before:inset-0 before:content-['']",
+        "after:absolute after:inset-0 after:bg-[linear-gradient(to_top,rgba(0,0,0,.34),transparent_55%)] after:content-['']",
+        photoClass
       )}
-    >
-      <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,.45),transparent_62%)]" />
-      <div className="absolute inset-0 shadow-[inset_0_0_38px_rgba(0,0,0,.55)]" />
-    </div>
+    />
   );
 }
 
 function AvatarStack() {
   return (
     <div className="flex -space-x-2">
-      {avatarSeeds.map((seed) => (
-        <img
-          key={seed}
-          src={`https://api.dicebear.com/8.x/notionists/svg?seed=${seed}`}
-          alt=""
-          className="h-6 w-6 rounded-full border border-[#151515] bg-[#28231f]"
-        />
+      {avatars.map((avatar, index) => (
+        <div
+          key={avatar}
+          className="h-7 w-7 overflow-hidden rounded-full border border-[#151515] bg-[#2a2520]"
+          style={{ zIndex: avatars.length - index }}
+        >
+          <img src={avatar} alt="" className="h-full w-full object-cover" />
+        </div>
       ))}
     </div>
   );
 }
 
-function MomentCard({
-  moment,
-  active,
-}: {
-  moment: Moment;
-  active?: boolean;
-}) {
-  const status =
+function MomentCard({ moment, active }: { moment: Moment; active?: boolean }) {
+  const statusColor =
     moment.tone === "orange"
       ? "bg-orange-500 text-orange-400"
       : moment.tone === "slate"
       ? "bg-slate-500 text-slate-300"
-      : "bg-[var(--red)] text-[#ff383d]";
+      : "bg-[#ff252a] text-[#ff363b]";
 
-  const primary = moment.action === "Tap in" || moment.action === "Catch it";
+  const actionIsPrimary = moment.action === "Tap in" || moment.action === "Catch it";
 
   return (
     <article
-      className={cn(
-        "grid grid-cols-[154px_1fr_138px] gap-4 rounded-[12px] border bg-[#111]/82 p-2.5 transition",
-        "hover:border-[rgba(242,28,34,.55)] hover:bg-[#151313]",
+      className={cx(
+        "group grid grid-cols-[188px_1fr_auto] gap-6 rounded-[13px] border bg-[#111111]/76 p-3 transition",
+        "hover:border-[#ff252a]/55 hover:bg-[#151313]",
         active
-          ? "border-[var(--red)] shadow-[0_0_0_1px_rgba(242,28,34,.14)]"
-          : "border-white/[0.08]"
+          ? "border-[#ff252a] shadow-[0_0_0_1px_rgba(255,37,42,.2),0_18px_60px_rgba(0,0,0,.36)]"
+          : "border-white/8"
       )}
     >
-      <Visual type={moment.visual} />
+      <PhotoBlock type={moment.photo} />
 
-      <div className="min-w-0 py-0.5">
-        <div className="mb-1.5 flex items-center gap-2">
-          <span className={cn("h-2.5 w-2.5 rounded-full", status.split(" ")[0])} />
-          <span className={cn("text-[12px] font-extrabold tracking-wide", status.split(" ")[1])}>
+      <div className="min-w-0 py-1">
+        <div className="mb-2 flex items-center gap-2">
+          <span className={cx("h-2.5 w-2.5 rounded-full", statusColor.split(" ")[0])} />
+          <span className={cx("text-[13px] font-bold tracking-wide", statusColor.split(" ")[1])}>
             {moment.status}
           </span>
         </div>
 
-        <h3 className="truncate text-[19px] font-bold leading-none tracking-[-0.04em] text-[#f7f0e8]">
+        <h3 className="truncate text-[22px] font-semibold leading-none tracking-[-0.03em] text-[#f6f0e8]">
           {moment.title}
         </h3>
 
-        <div className="mt-1.5 flex items-center gap-2 text-[13px] text-[#b9afa5]">
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[14px] text-[#b8afa6]">
           <MapPin className="h-3.5 w-3.5" />
           <span>{moment.distance}</span>
-          <span className="text-[#645d56]">•</span>
+          <span className="text-[#6e675f]">•</span>
           <span>{moment.area}</span>
         </div>
 
-        <p className="mt-1 text-[13px] text-[#a79d94]">{moment.detail}</p>
+        <p className="mt-1 text-[14px] text-[#a69d94]">{moment.detail}</p>
 
-        <div className="mt-2 flex items-center gap-3 text-[12.5px] text-[#a99f95]">
+        <div className="mt-3 flex items-center gap-3 text-[13px] text-[#aaa198]">
           <AvatarStack />
           <span>{moment.countLabel}</span>
-          {moment.friends && (
+          {moment.friends ? (
             <>
-              <span className="text-[#5f5851]">•</span>
+              <span className="text-[#625b54]">•</span>
               <span>{moment.friends}</span>
             </>
-          )}
+          ) : null}
         </div>
       </div>
 
-      <div className="flex flex-col items-end justify-between py-0.5">
-        <span
-          className={cn(
-            "text-[14px] font-bold",
+      <div className="flex min-w-[150px] flex-col items-end justify-between py-1">
+        <p
+          className={cx(
+            "text-[15px] font-semibold",
             moment.tone === "orange"
               ? "text-orange-400"
               : moment.tone === "slate"
-              ? "text-[#a9b0b8]"
-              : "text-[#ff383d]"
+              ? "text-[#a7aeb8]"
+              : "text-[#ff363b]"
           )}
         >
           {moment.time}
-        </span>
+        </p>
 
         <button
-          className={cn(
-            "rounded-[7px] px-5 py-2 text-[13px] font-bold transition focus:outline-none focus:ring-2 focus:ring-[rgba(242,28,34,.75)]",
-            primary
-              ? "bg-[var(--red)] text-white hover:bg-[#ff2a30]"
-              : "border border-white/[0.11] bg-white/[0.075] text-[#eee7df] hover:bg-white/[0.12]"
+          className={cx(
+            "rounded-[7px] px-6 py-2.5 text-[14px] font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#ff252a]/70 focus:ring-offset-2 focus:ring-offset-black",
+            actionIsPrimary
+              ? "bg-[#ed161d] text-white shadow-[inset_0_1px_0_rgba(255,255,255,.18)] hover:bg-[#ff252a]"
+              : "border border-white/8 bg-white/[.07] text-[#eee6de] hover:bg-white/[.11]"
           )}
         >
           {moment.action}
         </button>
 
-        <div className="flex items-center gap-1.5 text-[#b1a8a0]">
+        <div className="flex items-center gap-1.5 text-[#b3aaa1]">
           <MessageCircle className="h-4 w-4" />
-          <span className="text-[12px]">{moment.comments}</span>
+          <span className="text-[13px]">{moment.comments}</span>
         </div>
       </div>
     </article>
@@ -253,7 +259,11 @@ function MomentCard({
 }
 
 export default function Page() {
+  const [area, setArea] = useState("");
+  const [contact, setContact] = useState("");
   const [submitted, setSubmitted] = useState(false);
+
+  const liveCount = useMemo(() => moments.filter((moment) => moment.status === "LIVE").length, []);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -261,42 +271,39 @@ export default function Page() {
   }
 
   return (
-    <main className="relative h-screen w-screen overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_28%,rgba(255,255,255,.055),transparent_27%),radial-gradient(circle_at_65%_18%,rgba(242,28,34,.04),transparent_26%)]" />
+    <main className="min-h-screen overflow-hidden bg-[#070707] text-[#f6f0e8]">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(255,255,255,.045),transparent_28%),linear-gradient(90deg,rgba(255,255,255,.035),transparent_22%,transparent_78%,rgba(255,255,255,.035))]" />
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 h-px bg-[#211b18]" />
 
-      <section className="relative grid h-screen w-full grid-cols-[39%_61%] gap-0 px-9 py-6">
-        <aside className="flex h-full items-center pr-12">
-          <div className="w-full max-w-[430px]">
-            <h1 className="text-[clamp(44px,5.25vw,76px)] font-black leading-[0.9] tracking-[-0.085em] text-[#f8f1ea]">
+      <section className="relative mx-auto grid min-h-screen max-w-[1440px] grid-cols-1 gap-10 px-5 py-8 md:px-9 lg:grid-cols-[420px_1fr] lg:gap-14 lg:py-4">
+        <aside className="flex flex-col justify-center lg:min-h-screen">
+          <div className="max-w-[520px]">
+            <h1 className="max-w-[420px] text-[52px] font-black leading-[.96] tracking-[-0.07em] text-[#f7f1ea] md:text-[62px]">
               Real people.
               <br />
-              Right now.
-              <br />
-              Nearby<span className="text-[var(--red)]">.</span>
+              Right now. Nearby<span className="text-[#ff252a]">.</span>
             </h1>
 
-            <p className="mt-6 max-w-[370px] text-[18px] leading-[1.45] tracking-[-0.035em] text-[#bbb1a8]">
+            <p className="mt-7 max-w-[390px] text-[20px] leading-[1.45] tracking-[-0.025em] text-[#bdb4aa]">
               See what’s happening around you, who’s going, and where it’s heading.
             </p>
 
-            <div className="mt-6 space-y-3.5 text-[15px] text-[#d6cec6]">
+            <div className="mt-7 space-y-4 text-[16px] text-[#d7cec5]">
               <div className="flex items-center gap-4">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/18">
-                  <Clock3 className="h-3.5 w-3.5" />
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/18 text-[#f3eadf]">
+                  <Clock3 className="h-4 w-4" />
                 </span>
                 <span>Tap in before it disappears.</span>
               </div>
-
               <div className="flex items-center gap-4">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/18">
-                  <Users className="h-3.5 w-3.5" />
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/18 text-[#f3eadf]">
+                  <Users className="h-4 w-4" />
                 </span>
                 <span>See who’s already there.</span>
               </div>
-
               <div className="flex items-center gap-4">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/18">
-                  <Sparkles className="h-3.5 w-3.5" />
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/18 text-[#f3eadf]">
+                  <Sparkles className="h-4 w-4" />
                 </span>
                 <span>Move when it feels right.</span>
               </div>
@@ -304,78 +311,89 @@ export default function Page() {
 
             <form
               onSubmit={handleSubmit}
-              className="mt-8 rounded-[17px] border border-white/[0.1] bg-[#111]/82 p-5 shadow-[0_30px_90px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.045)]"
+              className="mt-8 rounded-[17px] border border-white/10 bg-[#111111]/74 p-6 shadow-[0_28px_80px_rgba(0,0,0,.34),inset_0_1px_0_rgba(255,255,255,.04)]"
             >
-              <p className="text-[12px] font-black uppercase tracking-[0.1em] text-[var(--red)]">
+              <p className="mb-2 text-[13px] font-black uppercase tracking-[.08em] text-[#ff252a]">
                 Get early access
               </p>
 
-              <h2 className="mt-2 text-[21px] font-extrabold tracking-[-0.045em] text-[#f8f1ea]">
+              <h2 className="text-[24px] font-bold tracking-[-0.04em] text-[#f6f0e8]">
                 Be the first in your area.
               </h2>
 
-              <label className="mt-5 block">
-                <span className="mb-2 block text-[12.5px] font-medium text-[#eee6de]">
-                  Enter your area
-                </span>
-                <input
-                  placeholder="e.g. Swansea, Uplands, Marina"
-                  className="h-10 w-full rounded-[7px] border border-white/[0.12] bg-black/35 px-4 text-[14px] text-[#f8f1ea] outline-none placeholder:text-[#706861] transition focus:border-[rgba(242,28,34,.75)] focus:ring-4 focus:ring-[rgba(242,28,34,.12)]"
-                />
-              </label>
+              <div className="mt-5 space-y-4">
+                <label className="block">
+                  <span className="mb-2 block text-[13px] font-medium text-[#eee6de]">
+                    Enter your area
+                  </span>
+                  <input
+                    value={area}
+                    onChange={(event) => setArea(event.target.value)}
+                    placeholder="e.g. Swansea, Uplands, Marina"
+                    className="h-11 w-full rounded-[8px] border border-white/12 bg-black/40 px-4 text-[15px] text-[#f6f0e8] outline-none transition placeholder:text-[#6f675f] focus:border-[#ff252a]/75 focus:ring-4 focus:ring-[#ff252a]/10"
+                  />
+                </label>
 
-              <label className="mt-3.5 block">
-                <span className="mb-2 block text-[12.5px] font-medium text-[#eee6de]">
-                  How should we reach you?
-                </span>
-                <input
-                  placeholder="Email or phone number"
-                  className="h-10 w-full rounded-[7px] border border-white/[0.12] bg-black/35 px-4 text-[14px] text-[#f8f1ea] outline-none placeholder:text-[#706861] transition focus:border-[rgba(242,28,34,.75)] focus:ring-4 focus:ring-[rgba(242,28,34,.12)]"
-                />
-              </label>
+                <label className="block">
+                  <span className="mb-2 block text-[13px] font-medium text-[#eee6de]">
+                    How should we reach you?
+                  </span>
+                  <input
+                    value={contact}
+                    onChange={(event) => setContact(event.target.value)}
+                    placeholder="Email or phone number"
+                    className="h-11 w-full rounded-[8px] border border-white/12 bg-black/40 px-4 text-[15px] text-[#f6f0e8] outline-none transition placeholder:text-[#6f675f] focus:border-[#ff252a]/75 focus:ring-4 focus:ring-[#ff252a]/10"
+                  />
+                </label>
 
-              <button
-                type="submit"
-                className="mt-4 h-11 w-full rounded-[7px] bg-[var(--red)] text-[15px] font-extrabold text-white transition hover:bg-[#ff2b31] focus:outline-none focus:ring-2 focus:ring-[rgba(242,28,34,.75)]"
-              >
-                {submitted ? "You’re on the list" : "Join local access"}
-              </button>
+                <button
+                  type="submit"
+                  className="flex h-12 w-full items-center justify-center rounded-[8px] bg-[#ed161d] text-[16px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.18)] transition hover:bg-[#ff252a] focus:outline-none focus:ring-2 focus:ring-[#ff252a]/70 focus:ring-offset-2 focus:ring-offset-black"
+                >
+                  {submitted ? "You’re on the list" : "Join local access"}
+                </button>
+              </div>
 
-              <div className="mt-3.5 flex items-center gap-2 text-[12.5px] text-[#a79d94]">
+              <div className="mt-4 flex items-center gap-2 text-[13px] text-[#a9a096]">
                 <Lock className="h-3.5 w-3.5" />
                 <span>No spam. No public profile.</span>
               </div>
 
-              <p className="mt-6 text-[15px] tracking-[-0.03em] text-[#9f968d]">
+              <p className="mt-7 text-[16px] tracking-[-0.02em] text-[#9f968d]">
                 Built for real life. Not just another app.
               </p>
             </form>
           </div>
         </aside>
 
-        <section className="flex h-full items-center">
-          <div className="flex h-[calc(100vh-48px)] w-full flex-col rounded-[18px] border border-white/[0.12] bg-[#101010]/86 p-6 shadow-[0_36px_110px_rgba(0,0,0,.5),inset_0_1px_0_rgba(255,255,255,.045)]">
-            <div className="flex items-start justify-between">
+        <section className="flex items-center lg:min-h-screen">
+          <div className="w-full rounded-[18px] border border-white/12 bg-[#101010]/78 p-7 shadow-[0_36px_100px_rgba(0,0,0,.42),inset_0_1px_0_rgba(255,255,255,.04)]">
+            <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full bg-orange-500" />
-                  <h2 className="text-[18px] font-extrabold tracking-[-0.04em]">
+                  <h2 className="text-[20px] font-bold tracking-[-0.035em]">
                     18 live nearby
                   </h2>
                 </div>
-                <p className="mt-1 text-[13px] text-[#8d847b]">Updated just now</p>
+                <p className="mt-1 text-[14px] text-[#8f867d]">Updated just now</p>
+              </div>
+
+              <div className="hidden items-center gap-2 text-[13px] text-[#9f968d] md:flex">
+                <Radio className="h-4 w-4 text-[#ff252a]" />
+                <span>{liveCount} live signals refreshing</span>
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-wrap gap-3">
               {filters.map((filter, index) => (
                 <button
                   key={filter.label}
-                  className={cn(
-                    "h-8 rounded-full border px-4 text-[13px] font-bold transition focus:outline-none focus:ring-2 focus:ring-[rgba(242,28,34,.7)]",
+                  className={cx(
+                    "h-9 rounded-full border px-5 text-[14px] font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#ff252a]/70 focus:ring-offset-2 focus:ring-offset-black",
                     index === 0
-                      ? "border-[var(--red)] bg-[var(--red)] text-white"
-                      : "border-white/[0.1] bg-white/[0.055] text-[#dfd6cd] hover:bg-white/[0.095]"
+                      ? "border-[#ff252a] bg-[#ed161d] text-white"
+                      : "border-white/10 bg-white/[.055] text-[#dfd6cd] hover:bg-white/[.09]"
                   )}
                 >
                   {filter.label}
@@ -384,26 +402,40 @@ export default function Page() {
               ))}
             </div>
 
-            <div className="mt-3 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+            <div className="mt-4 space-y-1.5">
               {moments.map((moment, index) => (
                 <MomentCard key={moment.id} moment={moment} active={index === 0} />
               ))}
             </div>
 
-            <footer className="mt-3 flex items-center justify-between border-t border-white/[0.08] pt-3 text-[12.5px] text-[#9f968d]">
+            <footer className="mt-0 flex flex-col gap-3 border-t border-white/8 px-1 pt-4 text-[13px] text-[#9f968d] md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3">
-                <Users className="h-4.5 w-4.5 text-[#b8afa6]" />
+                <Users className="h-5 w-5 text-[#b9b0a7]" />
                 <span>1,241 people live nearby</span>
               </div>
 
               <div className="flex items-center gap-3">
-                <ShieldCheck className="h-4.5 w-4.5 text-[#b8afa6]" />
+                <ShieldCheck className="h-5 w-5 text-[#b9b0a7]" />
                 <span>Real people. No bots.</span>
               </div>
             </footer>
           </div>
         </section>
       </section>
+
+      <div className="fixed right-5 top-5 hidden items-center gap-4 text-[#d9d0c7] md:flex">
+        <button
+          aria-label="Notifications"
+          className="relative rounded-full p-2 transition hover:bg-white/[.07] focus:outline-none focus:ring-2 focus:ring-[#ff252a]/70"
+        >
+          <Bell className="h-5 w-5" />
+          <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-[#ff252a]" />
+        </button>
+        <button className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-[13px] font-semibold transition hover:bg-white/[.08] focus:outline-none focus:ring-2 focus:ring-[#ff252a]/70">
+          Join Pulse
+          <MoveRight className="h-4 w-4" />
+        </button>
+      </div>
     </main>
   );
 }

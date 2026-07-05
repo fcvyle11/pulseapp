@@ -1,0 +1,5 @@
+node_modules
+.next/
+node_modules/
+pulse-os/.next/
+pulse-os/node_modules/
